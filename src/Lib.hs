@@ -3,26 +3,51 @@ module Lib
     , getDiff
     ) where
 
+{-# LANGUAGE OverloadedStrings #-}
+
 import Control.Monad
 import Control.Applicative
 
+zipWithPadding :: (Monoid a, Monoid b) => [a] -> [b] -> [(a, b)]
+zipWithPadding (x:xs) (y:ys) = (x, y) : zipWithPadding xs ys
+zipWithPadding xs [] = zip xs (repeat mempty)
+zipWithPadding [] ys = zip (repeat mempty) ys
+
 zipFileLines :: FilePath -> FilePath -> IO [(String, String)]
-zipFileLines a b = liftA2 zip (getLines a) (getLines b)
+zipFileLines a b = liftA2 zipWithPadding (getLines a) (getLines b)
                     where
                       getLines fp = readFile fp >>= (return . lines)
 
-findLine :: String -> [(String, String)] -> String
-findLine b xs =
-  let
-    ys = dropWhile (\(_, r) -> r /= b) xs
-    zs = takeWhile (\(a, _) -> a /= b) ys
-  in case (ys == zs) of
-    -- Do we find the line in the old file?
-    -- If not then ys == zs
-    True -> "+ " ++ b
-    False -> unlines . fmap (\(l, _) -> "- " ++ l) $ init zs
+getRawDiff :: [String] -> [String] -> [String] -> [String]
+getRawDiff rs (x:xs) (y:ys)
+    | x == y    = getRawDiff (y:rs) xs ys
+    | otherwise = composeChunk [] (x:xs) (y:ys)
+    where
+      composeChunk _ [] (u:us) = getRawDiff (("+ " ++ u):rs) xs ys
+      composeChunk res (t:ts) (u:us)
+          | t == u    = getRawDiff (u:res ++ rs) ts us
+          | otherwise = composeChunk (("- " ++ t) : res) ts (u:us)
 
-getDiff :: [(String, String)] -> String
-getDiff xs = unlines $ fmap diff xs
-             where
-              diff (a, b) = case (a == b) of {True -> a; False -> findLine b xs;}
+getRawDiff rs [] ys = (fmap ("- " ++) ys) ++ rs
+getRawDiff rs _ []  = rs
+
+getDiff :: [String] -> [String] -> String
+getDiff xs ys = unlines . reverse $ getRawDiff [] xs ys
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
