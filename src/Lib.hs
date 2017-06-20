@@ -3,8 +3,6 @@ module Lib
     , getDiff
     ) where
 
-{-# LANGUAGE OverloadedStrings #-}
-
 import Control.Monad
 import Control.Applicative
 
@@ -27,27 +25,8 @@ getRawDiff rs (x:xs) (y:ys)
       composeChunk res (t:ts) (u:us)
           | t == u    = getRawDiff (u:res ++ rs) ts us
           | otherwise = composeChunk (("- " ++ t) : res) ts (u:us)
-
 getRawDiff rs [] ys = (fmap ("- " ++) ys) ++ rs
 getRawDiff rs _ []  = rs
 
 getDiff :: [String] -> [String] -> String
 getDiff xs ys = unlines . reverse $ getRawDiff [] xs ys
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
